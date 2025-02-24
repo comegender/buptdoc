@@ -1,0 +1,291 @@
+#include<iostream>
+#include<fstream>
+#include<string>
+using namespace std;
+#define N 10000
+#define n 1000
+#define M 9000
+
+struct Products {
+	string id, name, inventory;
+}products[N];
+
+void createdir(int x1, int x2,string s,int flag) {
+	string id = "", name = "", inventory = "";
+	for (int i = 0; i < x1; i++) {
+		id += s[i];
+	}
+	for (int i = x1+1; i < x2; i++) {
+		name += s[i];
+	}
+	for (int i = x2+1; i < s.size(); i++) {
+		inventory += s[i];
+	}
+	products[flag].id = id;
+	products[flag].name= name;
+	products[flag].inventory = inventory;
+}
+
+void inputfile() {
+	ifstream f;
+	f.open("E:/BUPT/doc/数据结构/第二次实验/marketing_sample_10k_data.csv", ios::in);
+	if (f.is_open()) cout << "success!!!" << endl;
+	cout << "------------------------------------------------------" << endl;
+	string s;
+	int flag = 0;
+	getline(f, s);
+	while (flag<N) {
+		getline(f, s);
+		//cout << s << endl;
+		int x1=32, x2;
+		for (x2 = x1+1; s[x2] != ','; x2++);
+		createdir(x1, x2, s, flag);
+		flag++;
+	}
+}
+
+string Dp[n];
+void inputfile1() {
+	ifstream f;
+	f.open("E:/BUPT/doc/数据结构/第二次实验/drop sample_1k_data.csv", ios::in);
+	if (f.is_open()) cout << "success!!!" << endl;
+	cout << "------------------------------------------------------" << endl;
+	string s;
+	int flag = 0;
+	getline(f, s);
+	while (flag < n) {
+		getline(f, s);
+		Dp[flag] = s;
+		flag++;
+	}
+}
+
+struct BSTnode {
+	string data;
+	BSTnode* left;
+	BSTnode* right;
+};
+typedef BSTnode* BST;
+
+void InitBST(BST& T1) {
+	T1 = NULL;
+}
+
+void InsertBST(BST &T1,string s) {
+	if (T1 == NULL) {
+		T1 = new BSTnode;
+		T1->data = s;
+		T1->left = NULL;
+		T1->right = NULL;
+	}
+	else {
+		if (s < T1->data) InsertBST(T1->left, s);
+		else if (s > T1->data) InsertBST(T1->right, s);
+	}
+}
+
+void CreateBST(BST& T1) {
+	for (int i = 0; i < N; i++) {
+		InsertBST(T1, products[i].id);
+	}
+}
+
+int Height(BST& T1) {
+	if (T1 == NULL) return 0;
+	int leftdepth = Height(T1->left);
+	int rightdepth = Height(T1->right);
+	return 1 + (leftdepth > rightdepth ? leftdepth : rightdepth);
+}
+
+float ASL_successful(BST& T1, int wight) {
+	if (T1 == NULL) return 0;
+	return wight+ASL_successful(T1->left, wight + 1) + ASL_successful(T1->right, wight + 1);
+}
+
+float ASL_fail(BST& T1, int wight) {
+	if (T1 == NULL) return wight;
+	return ASL_fail(T1->left,wight+1) + ASL_fail(T1->right,wight+1);
+}
+
+struct stacknode {
+	BSTnode* data;
+	stacknode* next;
+};
+
+class stack {
+private:
+	stacknode* top;
+public:
+	void Init() {
+		top = new stacknode;
+		top->next = NULL;
+	}
+
+	void push(BSTnode* e) {
+		stacknode* t = new stacknode;
+		t->data = e;
+		t->next = top->next;
+		top->next = t;
+	}
+
+	BSTnode* pop() {
+		BSTnode* e = top->next->data;
+		stacknode* t = top;
+		top = top->next;
+		delete t;
+		return e;
+	}
+
+	bool empty() {
+		if (top->next == NULL) return true;
+		return false;
+	}
+};
+
+void Midorder(BST &T1,stack &s) {
+	BSTnode* p=T1;
+	while (!s.empty() || p) {
+		while (p) {
+			s.push(p);
+			p = p->left;
+		}
+		if (!s.empty()) {
+			p = s.pop();
+			cout << p->data << endl;
+			p = p->right;
+		}
+	}
+}
+
+string FindLeftMax(BST T1) {
+	if (T1 == NULL) return "";
+	if (T1->right == NULL) return T1->data;
+	if (T1->left == NULL && T1->right == NULL) return T1->data;
+	return FindLeftMax(T1->right);
+}
+
+BST Delete(BST T1,string key) {
+	if (T1 == NULL) return T1;
+	if (key < T1->data) {
+		T1->left = Delete(T1->left, key);
+		return T1;
+	}
+	if (key > T1->data) {
+		T1->right = Delete(T1->right, key);
+		return T1;
+	}
+	if (T1->left == NULL && T1->right == NULL) {
+		delete T1;
+		T1 = NULL;
+		return T1;
+	}
+	else if (T1->left == NULL) {
+		BSTnode* t = T1;
+		T1 = T1->right;
+		delete t;
+		return T1;
+	}
+	else if (T1->right == NULL) {
+		BSTnode* t = T1;
+		T1 = T1->left;
+		delete t;
+		return T1;
+	}
+	else {
+		string s = FindLeftMax(T1->left);
+		T1->data = s;
+		T1->left = Delete(T1->left, s);
+		return T1;
+	}
+	return T1;
+}
+
+void DeleteBST(BST& T1) {
+	for (int i = 0; i < n; i++) {
+		T1=Delete(T1, Dp[i]);
+	}
+}
+
+class AVL {
+public:
+	void LL(BST &T) {
+		BST temp=T->left;
+		T->left = temp->right;
+		temp->right = T;
+		T = temp;
+	}
+
+	void RR(BST& T) {
+		BST temp = T->right;
+		T->right = temp->left;
+		temp->left = T;
+		T = temp;
+	}
+
+	void LR(BST& T) {
+		RR(T->left);
+		LL(T);
+	}
+
+	void RL(BST& T) {
+		LL(T->right);
+		RR(T);
+	}
+
+	void InsertAVL(BST& T,string s) {
+		if (T == NULL) {
+			T = new BSTnode;
+			T->data = s;
+			T->left = T->right = NULL;
+		}
+		else {
+			if (s < T->data) {
+				InsertAVL(T->left, s);
+				if (Height(T->left) - Height(T->right) > 1) {
+					if (Height(T->left->left) > Height(T->left->right)) LL(T);
+					else LR(T);
+				}
+			}
+			else {
+				InsertAVL(T->right, s);
+				if (Height(T->right) - Height(T->left) > 1) {
+					if (Height(T->right->right) > Height(T->right->left)) RR(T);
+					else RL(T);
+				}
+			}
+		}
+	}
+
+	void BuildAVL(BST& T2) {
+		for (int i = 0; i < N; i++) InsertAVL(T2, products[i].id);
+	}
+};
+
+int main() {
+	inputfile();
+	inputfile1();
+	BST T1;
+	InitBST(T1);
+	CreateBST(T1);
+	stack s;
+	s.Init();
+	Midorder(T1,s);
+	cout << "高度：" << Height(T1) << endl;
+	cout << "查找成功ASL：" << ASL_successful(T1, 1)/N << endl;
+	cout << "查找失败ASL：" << ASL_fail(T1, 1)/N << endl;
+	DeleteBST(T1);
+	cout << "删除后：" << endl;
+	cout << "高度：" << Height(T1) << endl;
+	cout << "查找成功ASL：" << ASL_successful(T1, 1) / M << endl;
+	cout << "查找失败ASL：" << ASL_fail(T1, 1) / M << endl;
+	BST T2;
+	InitBST(T2);
+	AVL avl;
+	avl.BuildAVL(T2);
+	//Midorder(T2, s);
+	cout << "平衡二叉树：" << endl;
+	cout << "高度：" << Height(T2) << endl;
+	cout << "查找成功ASL：" << ASL_successful(T2, 1) / N << endl;
+	cout << "查找失败ASL：" << ASL_fail(T2, 1) / N << endl;
+	return 0;
+}
